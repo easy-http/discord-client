@@ -22,6 +22,7 @@
         </properties>
     </rule>
 
+    <!-- Deactivate rule for allman brace style since it conflicts with PSR-12 -->
     <rule ref="Generic.Functions.OpeningFunctionBraceBsdAllman">
         <exclude name="Generic.Functions.OpeningFunctionBraceBsdAllman.BraceOnSameLine"/>
     </rule>
