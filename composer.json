@@ -1,5 +1,6 @@
 {
     "name": "messaging-clients/discord-client",
+    "version": "0.1.0",
     "description": "HTTP Client for Discord built on top of EasyHTTP",
     "type": "library",
     "license": "MIT",

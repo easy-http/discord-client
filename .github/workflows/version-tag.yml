@@ -1,0 +1,75 @@
+name: Version Tag
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'composer.json'
+
+jobs:
+  create-version-tag:
+    name: Create Version Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tags
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Extract version from composer.json
+        id: extract_version
+        run: |
+          VERSION=$(php -r "echo json_decode(file_get_contents('composer.json'), true)['version'] ?? '';")
+          if [ -z "$VERSION" ]; then
+            echo "No version field found in composer.json"
+            echo "version_exists=false" >> $GITHUB_OUTPUT
+          else
+            echo "Found version: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "version_exists=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if tag exists
+        id: check_tag
+        if: steps.extract_version.outputs.version_exists == 'true'
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          TAG="v${VERSION}"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists"
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag $TAG does not exist"
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+          fi
+          echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create tag
+        if: steps.extract_version.outputs.version_exists == 'true' && steps.check_tag.outputs.tag_exists == 'false'
+        run: |
+          TAG="${{ steps.check_tag.outputs.tag_name }}"
+          VERSION="${{ steps.extract_version.outputs.version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "Release version $VERSION"
+          git push origin "$TAG"
+
+      - name: Skip tag creation
+        if: steps.extract_version.outputs.version_exists == 'false'
+        run: |
+          echo "Skipping tag creation: No version field found in composer.json"
+          echo "To enable automatic tagging, add a 'version' field to composer.json"
+
